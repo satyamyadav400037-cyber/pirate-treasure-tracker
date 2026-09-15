@@ -132,7 +132,7 @@ const DEFAULT_SEED_TREASURES: Treasure[] = [
   });
 
   const utils = trpc.useUtils();
-  const { data: serverTreasures } = trpc.treasures.list.useQuery(undefined, { retry: false });
+  const { data: serverTreasures, isLoading } = trpc.treasures.list.useQuery(undefined, { retry: false });
   const { data: stats } = trpc.treasures.stats.useQuery(undefined, { retry: false });
 
   const treasures = useMemo(() => {
