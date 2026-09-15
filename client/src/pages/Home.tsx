@@ -102,12 +102,34 @@ export default function Home() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("updated");
   const [notice, setNotice] = useState("All hands accounted for");
+const DEFAULT_SEED_TREASURES: Treasure[] = [
+  { id: 1, name: "Emerald Crown", islandName: "Skull Island", latitude: 18.42, longitude: -66.08, value: 250000, terrain: "Jungle", burialDepth: 12, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 2, name: "Ruby Chalice", islandName: "Cursed Reef", latitude: 14.61, longitude: -61.03, value: 175000, terrain: "Reef", burialDepth: 8, status: "Lost", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 3, name: "Aztec Idol", islandName: "Jaguar Key", latitude: 12.18, longitude: -68.25, value: 300000, terrain: "Cave", burialDepth: 20, status: "Stolen", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 4, name: "Golden Compass", islandName: "Whisper Island", latitude: 21.5, longitude: -77.78, value: 120000, terrain: "Cave", burialDepth: 5, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 5, name: "Sapphire Chest", islandName: "Shadow Atoll", latitude: 10.4, longitude: -76.54, value: 200000, terrain: "Coastal", burialDepth: 15, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 6, name: "Black Pearl Cache", islandName: "Midnight Isle", latitude: 16.75, longitude: -82.1, value: 95000, terrain: "Coastal", burialDepth: 10, status: "Lost", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 7, name: "Royal Doubloons", islandName: "Sunken Cay", latitude: 8.14, longitude: -81.3, value: 180000, terrain: "Coastal", burialDepth: 18, status: "Stolen", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 8, name: "Dragon Relic", islandName: "Inferno Island", latitude: 9.72, longitude: -79.42, value: 220000, terrain: "Mountain", burialDepth: 25, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 9, name: "Malabar Sovereign Gold", islandName: "Malabar Coast (Kerala, India)", latitude: 10.85, longitude: 75.95, value: 450000, terrain: "Coastal", burialDepth: 14, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 10, name: "Ceylon Star Ruby", islandName: "Galle Fort (Sri Lanka)", latitude: 6.03, longitude: 80.21, value: 520000, terrain: "Reef", burialDepth: 9, status: "Lost", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 11, name: "Lakshadweep Emerald Isle", islandName: "Kavaratti Atoll (India)", latitude: 10.57, longitude: 72.64, value: 380000, terrain: "Coastal", burialDepth: 11, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 12, name: "Andaman Cursed Sapphire", islandName: "Port Blair (Andaman, India)", latitude: 11.62, longitude: 92.72, value: 600000, terrain: "Jungle", burialDepth: 22, status: "Stolen", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 13, name: "Trincomalee Galleon Cache", islandName: "Trincomalee Bay (Sri Lanka)", latitude: 8.58, longitude: 81.21, value: 340000, terrain: "Coastal", burialDepth: 16, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 14, name: "Coromandel Jewel Chest", islandName: "Pulicat Lagoon (Tamil Nadu, India)", latitude: 13.41, longitude: 80.31, value: 290000, terrain: "Cave", burialDepth: 18, status: "Lost", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 15, name: "Goa Portuguese Doubloons", islandName: "Mormugao Bay (Goa, India)", latitude: 15.4, longitude: 73.8, value: 410000, terrain: "Coastal", burialDepth: 10, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notificationsRead, setNotificationsRead] = useState(false);
 
   const utils = trpc.useUtils();
-  const { data: treasures = [], isLoading } = trpc.treasures.list.useQuery();
-  const { data: stats } = trpc.treasures.stats.useQuery();
+  const { data: serverTreasures, isLoading } = trpc.treasures.list.useQuery(undefined, { retry: false });
+  const { data: stats } = trpc.treasures.stats.useQuery(undefined, { retry: false });
+
+  const treasures = useMemo(() => {
+    return (serverTreasures && serverTreasures.length > 0) ? serverTreasures : DEFAULT_SEED_TREASURES;
+  }, [serverTreasures]);
   const createMutation = trpc.treasures.create.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); toast.success("Treasure added to the ledger"); closeForm(); } });
   const updateMutation = trpc.treasures.update.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); toast.success("Ledger entry updated"); closeForm(); } });
   const removeMutation = trpc.treasures.remove.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); toast.success("Treasure removed from the ledger"); setTrackedTreasure(null); setHistoryTreasure(null); } });
