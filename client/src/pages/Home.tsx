@@ -31,7 +31,7 @@ type FormState = {
   status: Status;
 };
 
-const blankForm: FormState = { name: "", islandName: "", latitude: "", longitude: "", value: "", terrain: "Coastal", burialDepth: "", status: "Found" };
+const blankForm: FormState = { name: "", islandName: "", latitude: "15.4200", longitude: "-66.1000", value: "150000", terrain: "Coastal", burialDepth: "10", status: "Found" };
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "treasures", label: "Treasures", icon: Gem },
@@ -69,12 +69,12 @@ function TreasureForm({ form, setForm, editing, onSubmit, onClose, submitting, o
         <label className="field full"><span>Treasure name</span><input value={form.name} onChange={field("name")} placeholder="e.g. The Sunken Crown" required /></label>
         <label className="field"><span>Island / location</span><input value={form.islandName} onChange={field("islandName")} placeholder="e.g. Skull Island" required /></label>
         <label className="field"><span>Terrain</span><select value={form.terrain} onChange={field("terrain")}><option>Coastal</option><option>Jungle</option><option>Reef</option><option>Ruins</option><option>Cave</option><option>Atoll</option><option>Volcanic</option><option>Cove</option></select></label>
-        <label className="field"><span>Estimated value <em>gold doubloons</em></span><input type="number" min="0" value={form.value} onChange={field("value")} placeholder="250000" required /></label>
-        <label className="field"><span>Burial depth <em>meters</em></span><input type="number" min="0" step="0.1" value={form.burialDepth} onChange={field("burialDepth")} placeholder="12" required /></label>
+        <label className="field"><span>Estimated value <em>gold doubloons</em></span><input type="number" min="0" value={form.value} onChange={field("value")} placeholder="250000" /></label>
+        <label className="field"><span>Burial depth <em>meters</em></span><input type="number" min="0" step="0.1" value={form.burialDepth} onChange={field("burialDepth")} placeholder="12" /></label>
         <label className="field"><span>Status</span><select value={form.status} onChange={field("status")}><option>Found</option><option>Lost</option><option>Stolen</option></select></label>
-        <div className="field"><span>Coordinates <em>click the map to place a pin</em></span><div className="coordinate-row"><input type="number" min="-90" max="90" step="0.0001" value={form.latitude} onChange={field("latitude")} placeholder="Latitude" required /><input type="number" min="-180" max="180" step="0.0001" value={form.longitude} onChange={field("longitude")} placeholder="Longitude" required /></div><small className="coordinate-help"><Target size={13} /> Real nautical ranges: lat −90 to 90 · long −180 to 180</small></div>
+        <div className="field"><span>Coordinates <em>click the map to place a pin</em></span><div className="coordinate-row"><input type="number" min="-90" max="90" step="0.0001" value={form.latitude} onChange={field("latitude")} placeholder="Latitude" /><input type="number" min="-180" max="180" step="0.0001" value={form.longitude} onChange={field("longitude")} placeholder="Longitude" /></div><small className="coordinate-help"><Target size={13} /> Real nautical ranges: lat −90 to 90 · long −180 to 180</small></div>
       </div>
-      <div className="modal-foot"><span><Shield size={14} /> Every status transition is timestamped</span><div><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button type="submit" className="button gold" disabled={submitting}>{submitting ? "Saving…" : editing ? "Update treasure" : "Save treasure"}</button></div></div>
+      <div className="modal-foot"><span><Shield size={14} /> Every status transition is timestamped</span><div><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button type="submit" className="button gold">{editing ? "Update treasure" : "Save treasure"}</button></div></div>
     </form>
   </div>;
 }
@@ -120,19 +120,32 @@ const DEFAULT_SEED_TREASURES: Treasure[] = [
   { id: 15, name: "Goa Portuguese Doubloons", islandName: "Mormugao Bay (Goa, India)", latitude: 15.4, longitude: 73.8, value: 410000, terrain: "Coastal", burialDepth: 10, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
 ];
 
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notificationsRead, setNotificationsRead] = useState(false);
+  const [localTreasures, setLocalTreasures] = useState<Treasure[]>(() => {
+    try {
+      const saved = localStorage.getItem("pirate_local_treasures");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return DEFAULT_SEED_TREASURES;
+  });
 
   const utils = trpc.useUtils();
-  const { data: serverTreasures, isLoading } = trpc.treasures.list.useQuery(undefined, { retry: false });
+  const { data: serverTreasures } = trpc.treasures.list.useQuery(undefined, { retry: false });
   const { data: stats } = trpc.treasures.stats.useQuery(undefined, { retry: false });
 
   const treasures = useMemo(() => {
-    return (serverTreasures && serverTreasures.length > 0) ? serverTreasures : DEFAULT_SEED_TREASURES;
-  }, [serverTreasures]);
-  const createMutation = trpc.treasures.create.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); toast.success("Treasure added to the ledger"); closeForm(); } });
-  const updateMutation = trpc.treasures.update.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); toast.success("Ledger entry updated"); closeForm(); } });
-  const removeMutation = trpc.treasures.remove.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); toast.success("Treasure removed from the ledger"); setTrackedTreasure(null); setHistoryTreasure(null); } });
+    return (serverTreasures && serverTreasures.length > 0) ? serverTreasures : localTreasures;
+  }, [serverTreasures, localTreasures]);
+
+  const saveLocal = (next: Treasure[]) => {
+    setLocalTreasures(next);
+    try {
+      localStorage.setItem("pirate_local_treasures", JSON.stringify(next));
+    } catch {}
+  };
+
+  const createMutation = trpc.treasures.create.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); } });
+  const updateMutation = trpc.treasures.update.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); } });
+  const removeMutation = trpc.treasures.remove.useMutation({ onSuccess: async () => { await Promise.all([utils.treasures.list.invalidate(), utils.treasures.stats.invalidate()]); } });
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
@@ -159,8 +172,41 @@ const DEFAULT_SEED_TREASURES: Treasure[] = [
   function closeForm() { setFormOpen(false); setEditing(null); setForm(blankForm); }
   function openCreate() { setEditing(null); setForm(blankForm); setFormOpen(true); }
   function openEdit(treasure: Treasure) { setEditing(treasure); setForm({ name: treasure.name, islandName: treasure.islandName, latitude: String(treasure.latitude), longitude: String(treasure.longitude), value: String(treasure.value), terrain: treasure.terrain ?? "Coastal", burialDepth: String(treasure.burialDepth ?? 0), status: treasure.status }); setFormOpen(true); }
-  function submitForm(event: React.FormEvent) { event.preventDefault(); const payload = { name: form.name.trim(), islandName: form.islandName.trim(), latitude: Number(form.latitude), longitude: Number(form.longitude), value: Number(form.value), terrain: form.terrain, burialDepth: Number(form.burialDepth), status: form.status }; if (![payload.latitude, payload.longitude, payload.value, payload.burialDepth].every(Number.isFinite)) { toast.error("Check the numeric coordinates and value"); return; } if (editing) updateMutation.mutate({ id: editing.id, ...payload }); else createMutation.mutate(payload); }
-  function removeTreasure(treasure: Treasure) { if (window.confirm(`Remove ${treasure.name} from the ledger? This cannot be undone.`)) removeMutation.mutate({ id: treasure.id }); }
+  
+  function submitForm(event: React.FormEvent) {
+    event.preventDefault();
+    const payload = { name: form.name.trim(), islandName: form.islandName.trim(), latitude: Number(form.latitude), longitude: Number(form.longitude), value: Number(form.value), terrain: form.terrain, burialDepth: Number(form.burialDepth), status: form.status };
+    if (![payload.latitude, payload.longitude, payload.value, payload.burialDepth].every(Number.isFinite)) {
+      toast.error("Check the numeric coordinates and value");
+      return;
+    }
+    const newEntry: Treasure = {
+      id: editing ? editing.id : (localTreasures.length ? Math.max(...localTreasures.map((t) => t.id)) + 1 : Date.now()),
+      ...payload,
+      createdAt: editing ? editing.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    if (editing) {
+      saveLocal(localTreasures.map((t) => (t.id === editing.id ? newEntry : t)));
+      toast.success("Ledger entry updated");
+      try { updateMutation.mutate({ id: editing.id, ...payload }); } catch {}
+    } else {
+      saveLocal([newEntry, ...localTreasures]);
+      toast.success("Treasure added to the ledger");
+      try { createMutation.mutate(payload); } catch {}
+    }
+    closeForm();
+  }
+
+  function removeTreasure(treasure: Treasure) {
+    if (window.confirm(`Remove ${treasure.name} from the ledger? This cannot be undone.`)) {
+      saveLocal(localTreasures.filter((t) => t.id !== treasure.id));
+      toast.success("Treasure removed from the ledger");
+      setTrackedTreasure(null);
+      setHistoryTreasure(null);
+      try { removeMutation.mutate({ id: treasure.id }); } catch {}
+    }
+  }
   function handleMapPick(lat: number, lng: number) { setForm((current) => ({ ...current, latitude: lat.toFixed(4), longitude: lng.toFixed(4) })); setFormOpen(true); toast("Coordinates plotted from the map", { icon: "⚓" }); }
   const mapPick = useCallback((lat: number, lng: number) => handleMapPick(lat, lng), []);
 
