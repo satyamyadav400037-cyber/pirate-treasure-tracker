@@ -120,6 +120,9 @@ const DEFAULT_SEED_TREASURES: Treasure[] = [
   { id: 15, name: "Goa Portuguese Doubloons", islandName: "Mormugao Bay (Goa, India)", latitude: 15.4, longitude: 73.8, value: 410000, terrain: "Coastal", burialDepth: 10, status: "Found", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
 ];
 
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notificationsRead, setNotificationsRead] = useState(false);
+
   const [localTreasures, setLocalTreasures] = useState<Treasure[]>(() => {
     try {
       const saved = localStorage.getItem("pirate_local_treasures");
